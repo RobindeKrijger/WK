@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d2818">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>WK '26 — spoilervrij</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pitch:#0d2818;
+    --pitch-line:#1d4430;
+    --chalk:#f2f0e6;
+    --chalk-dim:#a8b3a0;
+    --ink:#0b0b0b;
+    --accent:#ff7a1a;
+    --card:#11331f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--pitch);
+    color:var(--chalk);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    min-height:100vh;
+    padding-bottom:48px;
+  }
+  header{
+    padding:28px 20px 18px;
+    border-bottom:2px solid var(--pitch-line);
+    position:relative;
+  }
+  header::after{
+    content:"";
+    position:absolute;
+    left:50%;bottom:-7px;
+    width:12px;height:12px;
+    transform:translateX(-50%);
+    border:2px solid var(--pitch-line);
+    border-radius:50%;
+    background:var(--pitch);
+  }
+  .eyebrow{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+  h1{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:800;
+    font-size:42px;
+    line-height:1;
+    letter-spacing:.01em;
+    text-transform:uppercase;
+    margin-top:4px;
+  }
+  h1 .lak{
+    background:var(--ink);
+    color:var(--ink);
+    border-radius:2px;
+    padding:0 .15em;
+  }
+  .sub{color:var(--chalk-dim);font-size:13px;margin-top:6px;max-width:34em}
+
+  .notice{
+    margin:14px 20px 0;
+    border:1px dashed var(--accent);
+    border-radius:8px;
+    padding:10px 14px;
+    font-size:13px;
+    color:var(--chalk);
+  }
+  .notice code{
+    background:var(--ink);
+    border-radius:4px;
+    padding:1px 6px;
+    font-size:12px;
+  }
+
+  .controls{
+    display:flex;flex-wrap:wrap;gap:8px;
+    padding:14px 20px;
+    border-bottom:1px solid var(--pitch-line);
+    align-items:center;
+  }
+  .chip{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;font-size:15px;
+    letter-spacing:.06em;text-transform:uppercase;
+    background:none;color:var(--chalk-dim);
+    border:1px solid var(--pitch-line);
+    border-radius:999px;
+    padding:5px 14px;
+    cursor:pointer;
+  }
+  .chip[aria-pressed="true"]{
+    color:var(--pitch);
+    background:var(--chalk);
+    border-color:var(--chalk);
+  }
+  .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .spacer{flex:1}
+  .strict-label{
+    display:flex;align-items:center;gap:7px;
+    font-size:13px;color:var(--chalk-dim);
+    cursor:pointer;user-select:none;
+  }
+  .strict-label input{accent-color:var(--accent);width:16px;height:16px}
+
+  main{padding:10px 14px;max-width:680px;margin:0 auto}
+
+  .status{
+    text-align:center;color:var(--chalk-dim);
+    padding:40px 24px;font-size:14px;
+  }
+  .status strong{color:var(--chalk)}
+  .status .hint{
+    margin-top:12px;font-size:13px;
+    border:1px dashed var(--pitch-line);
+    border-radius:8px;padding:12px;
+    text-align:left;
+  }
+
+  .video{
+    background:var(--card);
+    border:1px solid var(--pitch-line);
+    border-radius:10px;
+    margin:10px 0;
+    padding:14px 14px 12px;
+  }
+  .meta{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;font-size:13px;
+    letter-spacing:.18em;text-transform:uppercase;
+    color:var(--chalk-dim);
+    display:flex;gap:10px;align-items:baseline;
+  }
+  .meta .nr{color:var(--accent)}
+  .meta .kind{color:var(--chalk-dim)}
+  .title{
+    margin-top:6px;
+    font-size:17px;font-weight:600;
+    line-height:1.4;
+    overflow-wrap:anywhere;
+  }
+  .redact{
+    background:var(--ink);
+    color:transparent;
+    border-radius:2px;
+    padding:0 .2em;
+    cursor:pointer;
+    user-select:none;
+    transition:color .15s;
+  }
+  .redact.open{color:var(--chalk);background:#26221c}
+  .redact:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+  .actions{display:flex;gap:8px;margin-top:12px}
+  .btn{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;font-size:15px;
+    letter-spacing:.08em;text-transform:uppercase;
+    border-radius:7px;padding:8px 16px;
+    cursor:pointer;border:1px solid var(--pitch-line);
+    background:none;color:var(--chalk);
+    text-decoration:none;display:inline-block;
+  }
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0d00}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .player{margin-top:12px;display:none}
+  .player.open{display:block}
+  .player .frame{
+    position:relative;width:100%;
+    aspect-ratio:16/9;
+    background:#000;border-radius:8px;overflow:hidden;
+  }
+  .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .player .fallback{
+    margin-top:8px;font-size:13px;color:var(--chalk-dim);
+  }
+  .player .fallback a{color:var(--accent)}
+
+  footer{
+    text-align:center;color:var(--chalk-dim);
+    font-size:12px;padding:28px 20px 0;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">NOS Sport · WK voetbal 2026</div>
+  <h1>Uitslag <span class="lak">gelakt</span></h1>
+  <p class="sub">Alleen “Samenvatting Land – Land” wordt getoond. Alle overige titels zijn volledig gelakt — tik op een balkje als je tóch wilt weten wat eronder staat.</p>
+</header>
+
+<div class="notice" id="fileNotice" hidden>
+  Je opent dit bestand via <code>file://</code>. YouTube weigert dan video's in te sluiten (fout 153, ontbrekende referrer).
+  Snelste oplossing: start in de map van dit bestand <code>python3 -m http.server</code> en open
+  <code>http://localhost:8000/wk-spoilervrij.html</code>. Of zet het bestand op GitHub Pages.
+  “Open los” werkt altijd.
+</div>
+
+<div class="controls">
+  <button class="chip" id="fAll" aria-pressed="false">Alles</button>
+  <button class="chip" id="fWK" aria-pressed="true">Alleen samenvattingen</button>
+  <span class="spacer"></span>
+  <label class="strict-label">
+    <input type="checkbox" id="strict">
+    Strikte modus (ook landen gelakt)
+  </label>
+</div>
+
+<main id="list">
+  <div class="status">Feed laden…</div>
+</main>
+
+<footer>
+  Bron: openbare RSS-feed van het NOS Sport-kanaal (laatste 15 video's).<br>
+  Geen account, geen tracking, geen algoritme.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var CHANNEL_ID = "UCT4oPufBQa0f6C67Fw_HXNg"; // NOS Sport
+  var FEED = "https://www.youtube.com/feeds/videos.xml?channel_id=" + CHANNEL_ID;
+
+  var PROXIES = [
+    function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+    function(u){ return "https://corsproxy.io/?url=" + encodeURIComponent(u); },
+    function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+  ];
+
+  var state = { entries: [], filter: "samenvatting", strict: false };
+
+  function esc(s){
+    return s.replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  // WHITELIST: haal alleen "Samenvatting X - Y" uit de titel.
+  // Alles wat NOS vóór of na de pipe zet (uitroepen, scores, emoji) wordt genegeerd.
+  function extractSummary(title){
+    var m = title.match(/samenvatting\s*:?\s*([^|(#]+)/i);
+    if(!m) return null;
+    var teams = m[1]
+      .replace(/\b\d{1,2}\s*[-\u2013]\s*\d{1,2}\b/g, "")          // losse scores eruit
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "") // emoji eruit
+      .replace(/[!?.]+$/,"")
+      .replace(/\s+/g," ")
+      .trim();
+    if(!teams) return null;
+    return "Samenvatting " + teams;
+  }
+
+  function fmtDate(iso){
+    var d = new Date(iso);
+    return d.toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"long"})
+         + " · " + d.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
+  }
+
+  function render(){
+    var list = document.getElementById("list");
+    var shown = state.entries.filter(function(e){
+      if(state.filter === "samenvatting"){
+        return extractSummary(e.title) !== null;
+      }
+      return true;
+    });
+    if(shown.length === 0){
+      list.innerHTML = '<div class="status">Geen samenvattingen in de feed op dit moment. Probeer \u201cAlles\u201d.</div>';
+      return;
+    }
+    list.innerHTML = shown.map(function(e, i){
+      var summary = extractSummary(e.title);
+      var titleHtml, kind;
+      if(summary && !state.strict){
+        titleHtml = esc(summary);
+        kind = "samenvatting";
+      } else {
+        // volledig gelakt: originele titel staat eronder, onleesbaar tot je tikt
+        titleHtml = '<span class="redact" role="button" tabindex="0" aria-label="gelakt, tik om te tonen">' + esc(e.title) + '</span>';
+        kind = summary ? "samenvatting" : "overig";
+      }
+      return '<article class="video" data-id="' + esc(e.id) + '">'
+        + '<div class="meta"><span class="nr">' + String(i+1).padStart(2,"0") + '</span><span>' + fmtDate(e.published) + '</span><span class="kind">' + kind + '</span></div>'
+        + '<h2 class="title">' + titleHtml + '</h2>'
+        + '<div class="actions">'
+        +   '<button class="btn primary play">Afspelen</button>'
+        +   '<a class="btn" href="https://www.youtube.com/embed/' + esc(e.id) + '?rel=0" target="_blank" rel="noopener">Open los</a>'
+        + '</div>'
+        + '<div class="player"><div class="frame"></div>'
+        +   '<p class="fallback">Fout 153? Dat is YouTube dat een referrer eist \u2014 zie de melding bovenaan, of <a href="https://www.youtube.com/embed/' + esc(e.id) + '?rel=0" target="_blank" rel="noopener">open de video los</a>; dat blijft spoilervrij.</p>'
+        + '</div>'
+        + '</article>';
+    }).join("");
+  }
+
+  function onListClick(ev){
+    var t = ev.target;
+    if(t.classList.contains("redact")){
+      t.classList.toggle("open");
+      return;
+    }
+    if(t.classList.contains("play")){
+      var card = t.closest(".video");
+      var player = card.querySelector(".player");
+      var frame = card.querySelector(".frame");
+      var open = player.classList.toggle("open");
+      if(open && !frame.querySelector("iframe")){
+        var id = card.getAttribute("data-id");
+        var ifr = document.createElement("iframe");
+        ifr.src = "https://www.youtube-nocookie.com/embed/" + id + "?rel=0&modestbranding=1";
+        ifr.allow = "encrypted-media; fullscreen; picture-in-picture";
+        ifr.referrerPolicy = "strict-origin-when-cross-origin";
+        ifr.setAttribute("allowfullscreen","");
+        frame.appendChild(ifr);
+        t.textContent = "Sluiten";
+      } else if(!open){
+        frame.innerHTML = "";
+        t.textContent = "Afspelen";
+      }
+    }
+  }
+  function onListKey(ev){
+    if((ev.key === "Enter" || ev.key === " ") && ev.target.classList.contains("redact")){
+      ev.preventDefault();
+      ev.target.classList.toggle("open");
+    }
+  }
+
+  function parseFeed(xmlText){
+    var doc = new DOMParser().parseFromString(xmlText, "text/xml");
+    var entries = Array.prototype.slice.call(doc.getElementsByTagName("entry"));
+    return entries.map(function(en){
+      function tag(n){ var el = en.getElementsByTagName(n)[0]; return el ? el.textContent : ""; }
+      return {
+        id: tag("yt:videoId") || tag("videoId"),
+        title: tag("title"),
+        published: tag("published")
+      };
+    }).filter(function(e){ return e.id && e.title; });
+  }
+
+  function load(proxyIndex){
+    proxyIndex = proxyIndex || 0;
+    if(proxyIndex >= PROXIES.length){
+      document.getElementById("list").innerHTML =
+        '<div class="status"><strong>De feed kon niet geladen worden.</strong>'
+        + '<div class="hint">Bekijk je dit bestand binnen Claude? De voorvertoning blokkeert externe verbindingen. '
+        + 'Download het bestand en open het in je browser \u2014 daar werkt het wel.</div></div>';
+      return;
+    }
+    fetch(PROXIES[proxyIndex](FEED))
+      .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(function(text){
+        var entries = parseFeed(text);
+        if(entries.length === 0) throw new Error("lege feed");
+        state.entries = entries;
+        render();
+      })
+      .catch(function(){ load(proxyIndex + 1); });
+  }
+
+  // file://-detectie voor de fout 153-uitleg
+  if(location.protocol === "file:"){
+    document.getElementById("fileNotice").hidden = false;
+  }
+
+  document.getElementById("list").addEventListener("click", onListClick);
+  document.getElementById("list").addEventListener("keydown", onListKey);
+  document.getElementById("strict").addEventListener("change", function(ev){
+    state.strict = ev.target.checked; render();
+  });
+  document.getElementById("fAll").addEventListener("click", function(){
+    state.filter = "all"; syncChips(); render();
+  });
+  document.getElementById("fWK").addEventListener("click", function(){
+    state.filter = "samenvatting"; syncChips(); render();
+  });
+  function syncChips(){
+    document.getElementById("fAll").setAttribute("aria-pressed", state.filter==="all");
+    document.getElementById("fWK").setAttribute("aria-pressed", state.filter==="samenvatting");
+  }
+
+  load(0);
+})();
+</script>
+</body>
+</html>
