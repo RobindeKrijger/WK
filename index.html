@@ -69,21 +69,6 @@
   }
   .sub{color:var(--chalk-dim);font-size:13px;margin-top:6px;max-width:34em}
 
-  .notice{
-    margin:14px 20px 0;
-    border:1px dashed var(--accent);
-    border-radius:8px;
-    padding:10px 14px;
-    font-size:13px;
-    color:var(--chalk);
-  }
-  .notice code{
-    background:var(--ink);
-    border-radius:4px;
-    padding:1px 6px;
-    font-size:12px;
-  }
-
   .controls{
     display:flex;flex-wrap:wrap;gap:8px;
     padding:14px 20px;
@@ -143,7 +128,6 @@
     display:flex;gap:10px;align-items:baseline;
   }
   .meta .nr{color:var(--accent)}
-  .meta .kind{color:var(--chalk-dim)}
   .title{
     margin-top:6px;
     font-size:17px;font-weight:600;
@@ -162,7 +146,7 @@
   .redact.open{color:var(--chalk);background:#26221c}
   .redact:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
-  .actions{display:flex;gap:8px;margin-top:12px}
+  .actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .btn{
     font-family:'Barlow Condensed',sans-serif;
     font-weight:600;font-size:15px;
@@ -177,16 +161,48 @@
 
   .player{margin-top:12px;display:none}
   .player.open{display:block}
-  .player .frame{
+  .frame{
     position:relative;width:100%;
     aspect-ratio:16/9;
     background:#000;border-radius:8px;overflow:hidden;
   }
-  .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-  .player .fallback{
-    margin-top:8px;font-size:13px;color:var(--chalk-dim);
+  .frame:fullscreen{border-radius:0}
+  .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+  /* balk die YouTubes eigen titel permanent afdekt */
+  .shield{
+    position:absolute;top:0;left:0;right:0;
+    height:64px;
+    background:linear-gradient(#0b0b0b 72%, rgba(11,11,11,0));
+    color:var(--chalk-dim);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;font-size:15px;
+    letter-spacing:.08em;text-transform:uppercase;
+    padding:10px 14px 0;
+    pointer-events:none;
+    z-index:2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .player .fallback a{color:var(--accent)}
+
+  /* gordijn: dicht bij laden, pauze en einde (verbergt titel + aanbevolen video's) */
+  .curtain{
+    position:absolute;inset:0;
+    background:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    color:var(--chalk);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;font-size:19px;
+    letter-spacing:.06em;text-transform:uppercase;
+    cursor:pointer;
+    z-index:3;
+    padding:20px;
+  }
+  .curtain[hidden]{display:none}
+  .curtain small{
+    display:block;margin-top:6px;
+    color:var(--chalk-dim);font-size:13px;letter-spacing:.1em;
+  }
 
   footer{
     text-align:center;color:var(--chalk-dim);
@@ -202,15 +218,8 @@
 <header>
   <div class="eyebrow">NOS Sport · WK voetbal 2026</div>
   <h1>Uitslag <span class="lak">gelakt</span></h1>
-  <p class="sub">Alleen “Samenvatting Land – Land” wordt getoond. Alle overige titels zijn volledig gelakt — tik op een balkje als je tóch wilt weten wat eronder staat.</p>
+  <p class="sub">Alleen “Samenvatting Land – Land” wordt getoond. Alle overige titels zijn volledig gelakt — tik op een balkje als je tóch wilt weten wat eronder staat. De speler dekt YouTubes eigen titel en aanbevelingen af.</p>
 </header>
-
-<div class="notice" id="fileNotice" hidden>
-  Je opent dit bestand via <code>file://</code>. YouTube weigert dan video's in te sluiten (fout 153, ontbrekende referrer).
-  Snelste oplossing: start in de map van dit bestand <code>python3 -m http.server</code> en open
-  <code>http://localhost:8000/wk-spoilervrij.html</code>. Of zet het bestand op GitHub Pages.
-  “Open los” werkt altijd.
-</div>
 
 <div class="controls">
   <button class="chip" id="fAll" aria-pressed="false">Alles</button>
@@ -245,6 +254,9 @@
   ];
 
   var state = { entries: [], filter: "samenvatting", strict: false };
+  var players = {};        // videoId -> YT.Player
+  var ytReady = false;
+  var ytQueue = [];
 
   function esc(s){
     return s.replace(/[&<>"']/g, function(c){
@@ -252,19 +264,23 @@
     });
   }
 
-  // WHITELIST: haal alleen "Samenvatting X - Y" uit de titel.
-  // Alles wat NOS vóór of na de pipe zet (uitroepen, scores, emoji) wordt genegeerd.
+  // WHITELIST: alleen "Samenvatting X - Y" uit de titel halen.
   function extractSummary(title){
     var m = title.match(/samenvatting\s*:?\s*([^|(#]+)/i);
     if(!m) return null;
     var teams = m[1]
-      .replace(/\b\d{1,2}\s*[-\u2013]\s*\d{1,2}\b/g, "")          // losse scores eruit
-      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "") // emoji eruit
+      .replace(/\b\d{1,2}\s*[-\u2013]\s*\d{1,2}\b/g, "")
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
       .replace(/[!?.]+$/,"")
       .replace(/\s+/g," ")
       .trim();
     if(!teams) return null;
     return "Samenvatting " + teams;
+  }
+
+  function safeLabel(e){
+    var s = extractSummary(e.title);
+    return s ? s : "NOS Sport-video";
   }
 
   function fmtDate(iso){
@@ -282,58 +298,153 @@
       return true;
     });
     if(shown.length === 0){
-      list.innerHTML = '<div class="status">Geen samenvattingen in de feed op dit moment. Probeer \u201cAlles\u201d.</div>';
+      list.innerHTML = '<div class="status">Geen samenvattingen in de feed op dit moment. Probeer “Alles”.</div>';
       return;
     }
     list.innerHTML = shown.map(function(e, i){
       var summary = extractSummary(e.title);
-      var titleHtml, kind;
+      var titleHtml;
       if(summary && !state.strict){
         titleHtml = esc(summary);
-        kind = "samenvatting";
       } else {
-        // volledig gelakt: originele titel staat eronder, onleesbaar tot je tikt
         titleHtml = '<span class="redact" role="button" tabindex="0" aria-label="gelakt, tik om te tonen">' + esc(e.title) + '</span>';
-        kind = summary ? "samenvatting" : "overig";
       }
-      return '<article class="video" data-id="' + esc(e.id) + '">'
-        + '<div class="meta"><span class="nr">' + String(i+1).padStart(2,"0") + '</span><span>' + fmtDate(e.published) + '</span><span class="kind">' + kind + '</span></div>'
+      return '<article class="video" data-id="' + esc(e.id) + '" data-label="' + esc(safeLabel(e)) + '">'
+        + '<div class="meta"><span class="nr">' + String(i+1).padStart(2,"0") + '</span><span>' + fmtDate(e.published) + '</span></div>'
         + '<h2 class="title">' + titleHtml + '</h2>'
         + '<div class="actions">'
         +   '<button class="btn primary play">Afspelen</button>'
-        +   '<a class="btn" href="https://www.youtube.com/embed/' + esc(e.id) + '?rel=0" target="_blank" rel="noopener">Open los</a>'
+        +   '<button class="btn fs" hidden>Volledig scherm</button>'
         + '</div>'
-        + '<div class="player"><div class="frame"></div>'
-        +   '<p class="fallback">Fout 153? Dat is YouTube dat een referrer eist \u2014 zie de melding bovenaan, of <a href="https://www.youtube.com/embed/' + esc(e.id) + '?rel=0" target="_blank" rel="noopener">open de video los</a>; dat blijft spoilervrij.</p>'
+        + '<div class="player">'
+        +   '<div class="frame">'
+        +     '<div class="yt"></div>'
+        +     '<div class="shield"></div>'
+        +     '<div class="curtain">Laden…</div>'
+        +   '</div>'
         + '</div>'
         + '</article>';
     }).join("");
   }
 
+  /* ---------- YouTube IFrame API ---------- */
+  function loadYTApi(cb){
+    if(ytReady){ cb(); return; }
+    ytQueue.push(cb);
+    if(ytQueue.length > 1) return; // script al onderweg
+    var tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = function(){
+      ytReady = true;
+      ytQueue.forEach(function(f){ f(); });
+      ytQueue = [];
+    };
+  }
+
+  function setCurtain(card, text, sub){
+    var c = card.querySelector(".curtain");
+    if(text === null){ c.hidden = true; return; }
+    c.hidden = false;
+    c.innerHTML = esc(text) + (sub ? "<small>" + esc(sub) + "</small>" : "");
+  }
+
+  function startPlayer(card){
+    var id = card.getAttribute("data-id");
+    var label = card.getAttribute("data-label");
+    card.querySelector(".shield").textContent = label;
+    setCurtain(card, "Laden…");
+    loadYTApi(function(){
+      if(players[id]) return;
+      players[id] = new YT.Player(card.querySelector(".yt"), {
+        videoId: id,
+        playerVars: {
+          rel: 0,
+          autoplay: 1,
+          playsinline: 1,
+          fs: 0,              // eigen fullscreen-knop, zodat de afdekking meegaat
+          iv_load_policy: 3,
+          modestbranding: 1
+        },
+        events: {
+          onReady: function(ev){ ev.target.playVideo(); },
+          onStateChange: function(ev){
+            if(ev.data === YT.PlayerState.PLAYING){
+              setCurtain(card, null);
+            } else if(ev.data === YT.PlayerState.PAUSED){
+              setCurtain(card, "Gepauzeerd", "tik om verder te kijken");
+            } else if(ev.data === YT.PlayerState.ENDED){
+              setCurtain(card, "Afgelopen", "tik om opnieuw te kijken");
+            } else if(ev.data === YT.PlayerState.UNSTARTED || ev.data === YT.PlayerState.CUED){
+              setCurtain(card, "Tik om af te spelen");
+            }
+          },
+          onError: function(){
+            setCurtain(card, "Afspelen lukt niet", "open de video los via YouTube: tik hier");
+            card.querySelector(".curtain").setAttribute("data-fallback","1");
+          }
+        }
+      });
+    });
+  }
+
+  function stopPlayer(card){
+    var id = card.getAttribute("data-id");
+    if(players[id]){
+      players[id].destroy();
+      delete players[id];
+      var frame = card.querySelector(".frame");
+      frame.innerHTML = '<div class="yt"></div><div class="shield"></div><div class="curtain">Laden…</div>';
+    }
+  }
+
+  /* ---------- events ---------- */
   function onListClick(ev){
     var t = ev.target;
+
     if(t.classList.contains("redact")){
       t.classList.toggle("open");
       return;
     }
-    if(t.classList.contains("play")){
+
+    if(t.classList.contains("curtain") || t.closest(".curtain")){
       var card = t.closest(".video");
-      var player = card.querySelector(".player");
-      var frame = card.querySelector(".frame");
-      var open = player.classList.toggle("open");
-      if(open && !frame.querySelector("iframe")){
-        var id = card.getAttribute("data-id");
-        var ifr = document.createElement("iframe");
-        ifr.src = "https://www.youtube-nocookie.com/embed/" + id + "?rel=0&modestbranding=1";
-        ifr.allow = "encrypted-media; fullscreen; picture-in-picture";
-        ifr.referrerPolicy = "strict-origin-when-cross-origin";
-        ifr.setAttribute("allowfullscreen","");
-        frame.appendChild(ifr);
-        t.textContent = "Sluiten";
-      } else if(!open){
-        frame.innerHTML = "";
-        t.textContent = "Afspelen";
+      var curtain = card.querySelector(".curtain");
+      var id = card.getAttribute("data-id");
+      if(curtain.getAttribute("data-fallback")){
+        window.open("https://www.youtube.com/embed/" + id + "?rel=0", "_blank", "noopener");
+        return;
       }
+      if(players[id]){
+        var st = players[id].getPlayerState();
+        if(st === YT.PlayerState.ENDED){ players[id].seekTo(0); }
+        players[id].playVideo();
+      }
+      return;
+    }
+
+    if(t.classList.contains("play")){
+      var card2 = t.closest(".video");
+      var player = card2.querySelector(".player");
+      var open = player.classList.toggle("open");
+      var fsBtn = card2.querySelector(".fs");
+      if(open){
+        startPlayer(card2);
+        t.textContent = "Sluiten";
+        if(document.fullscreenEnabled) fsBtn.hidden = false;
+      } else {
+        stopPlayer(card2);
+        t.textContent = "Afspelen";
+        fsBtn.hidden = true;
+      }
+      return;
+    }
+
+    if(t.classList.contains("fs")){
+      var frame = t.closest(".video").querySelector(".frame");
+      if(document.fullscreenElement){ document.exitFullscreen(); }
+      else { frame.requestFullscreen(); }
+      return;
     }
   }
   function onListKey(ev){
@@ -343,6 +454,7 @@
     }
   }
 
+  /* ---------- feed ---------- */
   function parseFeed(xmlText){
     var doc = new DOMParser().parseFromString(xmlText, "text/xml");
     var entries = Array.prototype.slice.call(doc.getElementsByTagName("entry"));
@@ -362,7 +474,7 @@
       document.getElementById("list").innerHTML =
         '<div class="status"><strong>De feed kon niet geladen worden.</strong>'
         + '<div class="hint">Bekijk je dit bestand binnen Claude? De voorvertoning blokkeert externe verbindingen. '
-        + 'Download het bestand en open het in je browser \u2014 daar werkt het wel.</div></div>';
+        + 'Open de gehoste versie in je browser — daar werkt het wel.</div></div>';
       return;
     }
     fetch(PROXIES[proxyIndex](FEED))
@@ -374,11 +486,6 @@
         render();
       })
       .catch(function(){ load(proxyIndex + 1); });
-  }
-
-  // file://-detectie voor de fout 153-uitleg
-  if(location.protocol === "file:"){
-    document.getElementById("fileNotice").hidden = false;
   }
 
   document.getElementById("list").addEventListener("click", onListClick);
