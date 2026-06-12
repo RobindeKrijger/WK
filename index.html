@@ -357,6 +357,7 @@
     loadYTApi(function(){
       if(players[id]) return;
       players[id] = new YT.Player(card.querySelector(".yt"), {
+        host: "https://www.youtube-nocookie.com",
         videoId: id,
         playerVars: {
           rel: 0,
@@ -460,8 +461,9 @@
     var entries = Array.prototype.slice.call(doc.getElementsByTagName("entry"));
     return entries.map(function(en){
       function tag(n){ var el = en.getElementsByTagName(n)[0]; return el ? el.textContent : ""; }
+      var rawId = tag("yt:videoId") || tag("videoId");
       return {
-        id: tag("yt:videoId") || tag("videoId"),
+        id: /^[A-Za-z0-9_-]{6,20}$/.test(rawId) ? rawId : "",
         title: tag("title"),
         published: tag("published")
       };
