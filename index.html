@@ -158,6 +158,8 @@
   }
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0d00}
   .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn[hidden]{display:none}
+  body.no-fs .fs{display:none}
 
   .player{margin-top:12px;display:none}
   .player.open{display:block}
@@ -172,7 +174,7 @@
   /* balk die YouTubes eigen titel permanent afdekt */
   .shield{
     position:absolute;top:0;left:0;right:0;
-    height:64px;
+    height:max(64px, 17%);
     background:linear-gradient(#0b0b0b 72%, rgba(11,11,11,0));
     color:var(--chalk-dim);
     font-family:'Barlow Condensed',sans-serif;
@@ -314,7 +316,7 @@
         + '<h2 class="title">' + titleHtml + '</h2>'
         + '<div class="actions">'
         +   '<button class="btn primary play">Afspelen</button>'
-        +   '<button class="btn fs" hidden>Volledig scherm</button>'
+        +   '<button class="btn fs">Volledig scherm</button>'
         + '</div>'
         + '<div class="player">'
         +   '<div class="frame">'
@@ -428,23 +430,28 @@
       var card2 = t.closest(".video");
       var player = card2.querySelector(".player");
       var open = player.classList.toggle("open");
-      var fsBtn = card2.querySelector(".fs");
       if(open){
         startPlayer(card2);
         t.textContent = "Sluiten";
-        if(document.fullscreenEnabled) fsBtn.hidden = false;
       } else {
+        if(document.fullscreenElement){ document.exitFullscreen(); }
         stopPlayer(card2);
         t.textContent = "Afspelen";
-        fsBtn.hidden = true;
       }
       return;
     }
 
     if(t.classList.contains("fs")){
-      var frame = t.closest(".video").querySelector(".frame");
+      var card3 = t.closest(".video");
+      var player3 = card3.querySelector(".player");
+      if(!player3.classList.contains("open")){
+        player3.classList.add("open");
+        startPlayer(card3);
+        card3.querySelector(".play").textContent = "Sluiten";
+      }
+      var frame = card3.querySelector(".frame");
       if(document.fullscreenElement){ document.exitFullscreen(); }
-      else { frame.requestFullscreen(); }
+      else if(frame.requestFullscreen){ frame.requestFullscreen(); }
       return;
     }
   }
@@ -489,6 +496,23 @@
       })
       .catch(function(){ load(proxyIndex + 1); });
   }
+
+  // Bij roteren toont YouTube kort zijn eigen overlay (met titel): even maskeren.
+  function maskOpenPlayers(){
+    document.querySelectorAll(".player.open").forEach(function(pl){
+      var card = pl.closest(".video");
+      var id = card.getAttribute("data-id");
+      setCurtain(card, "\u00a0");
+      setTimeout(function(){
+        if(players[id] && players[id].getPlayerState && players[id].getPlayerState() === YT.PlayerState.PLAYING){
+          setCurtain(card, null);
+        }
+      }, 900);
+    });
+  }
+  window.addEventListener("orientationchange", maskOpenPlayers);
+
+  if(!document.fullscreenEnabled){ document.body.classList.add("no-fs"); }
 
   document.getElementById("list").addEventListener("click", onListClick);
   document.getElementById("list").addEventListener("keydown", onListKey);
